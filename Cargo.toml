@@ -1,4 +1,5 @@
 [package]
+authors = ["Marcin Świerczek <mswierczek90@gmail.com>"]
 name = "auction_house_rs"
 version = "0.1.0"
 edition = "2021"
@@ -6,6 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tonic = "0.9.2"
 
 [[bin]]
 name = "backend"

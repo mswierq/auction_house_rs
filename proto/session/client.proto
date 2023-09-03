@@ -1,2 +1,36 @@
-syntax = "proto3"
+syntax = "proto3";
 
+import "google/protobuf/empty.proto";
+package auction_house_rs.session.client;
+
+service ClientSession {
+    rpc Register(Register) returns (TokenResponse);
+    rpc Login(Login) returns (TokenResponse);
+    rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
+    rpc ChangePassword(ChangePassword) returns (google.protobuf.Empty);
+    rpc RefreshToken(google.protobuf.Empty) returns (TokenResponse);
+}
+
+message Register {
+    string username = 1;
+    string password = 2;
+}
+
+message TokenResponse {
+    string token = 1;
+}
+
+message Login {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+    string token = 1;
+}
+
+message ChangePassword {
+    string old_password = 1;
+    string new_password = 2;
+}

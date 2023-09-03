@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+package auction_house_rs.session.backend;
+
+service TokenVerifier {
+  rpc VerifyToken(TokenRequest) returns (google.protobuf.Empty);
+}
+
+message TokenRequest {
+  string token = 1;
+}
