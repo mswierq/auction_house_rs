@@ -1,0 +1,20 @@
+[package]
+name = "auction_house_rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[[bin]]
+name = "backend"
+path = "src/backend/bin/main.rs"
+
+[[bin]]
+name = "session"
+path = "src/session/bin/main.rs"
+
+[[bin]]
+name = "cli"
+path = "src/cli/bin/main.rs"
