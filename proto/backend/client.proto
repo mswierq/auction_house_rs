@@ -6,34 +6,23 @@ package auction_house_rs.backend.client;
 service Client {
     rpc DepositFunds(DepositFunds) returns (google.protobuf.Empty);
     rpc WithdrawFunds(WithdrawFunds) returns (google.protobuf.Empty);
-    rpc ShowFunds(ShowFunds) returns (ShowFundsResponse);
+    rpc ShowFunds(google.protobuf.Empty) returns (ShowFundsResponse);
     rpc DepositItem(DepositItem) returns (google.protobuf.Empty);
     rpc WithdrawItem(WithdrawItem) returns (google.protobuf.Empty);
-    rpc ShowItems(ShowItems) returns (ShowItemsResponse);
+    rpc ShowItems(google.protobuf.Empty) returns (ShowItemsResponse);
     rpc SellItem(SellItem) returns (google.protobuf.Empty);
     rpc BidItem(BidItem) returns (google.protobuf.Empty);
-    rpc ListAuctions(ListAuctions) returns (ListAuctionsResponse);
+    rpc ListAuctions(google.protobuf.Empty) returns (ListAuctionsResponse);
     rpc ListWatchAuctions(ListAuctions) returns (stream ListAuctionsResponse);
-    rpc WatchUserAuctions(stream WatchUserAuctions) returns (stream WatchUserAuctionsResponse);
-}
-
-message UserSession {
-    string account_id = 1;
-    optional string session_id = 2;
+    rpc WatchUserAuctions(stream google.protobuf.Empty) returns (stream WatchUserAuctionsResponse);
 }
 
 message DepositFunds {
-    UserSession user_session = 1;
-    uint64 amount = 2;
+    uint64 amount = 1;
 }
 
 message WithdrawFunds {
-    UserSession user_session = 1;
-    uint64 amount = 2;
-}
-
-message ShowFunds {
-    UserSession user_session = 1;
+    uint64 amount = 1;
 }
 
 message ShowFundsResponse {
@@ -41,17 +30,11 @@ message ShowFundsResponse {
 }
 
 message DepositItem {
-    UserSession user_session = 1;
-    string item = 2;
+    string item = 1;
 }
 
 message WithdrawItem {
-    UserSession user_session = 1;
-    string item = 2;
-}
-
-message ShowItems {
-    UserSession user_session = 1;
+    string item = 1;
 }
 
 message ShowItemsResponse {
@@ -59,19 +42,14 @@ message ShowItemsResponse {
 }
 
 message SellItem {
-    UserSession user_session = 1;
-    string item = 2;
-    uint64 price = 3;
-    uint64 duration = 4;
+    string item = 1;
+    uint64 price = 2;
+    uint64 duration = 3;
 }
 
 message BidItem {
-    UserSession user_session = 1;
-    string auction_id = 2;
-    uint64 price = 3;
-}
-
-message ListAuctions {
+    string auction_id = 1;
+    uint64 price = 2;
 }
 
 message Auction {
@@ -82,10 +60,6 @@ message Auction {
     string buyer = 5;
     uint64 created_at = 6;
     uint64 ends_at = 7;
-}
-
-message WatchUserAuctions {
-    UserSession user_session = 1;
 }
 
 message ListAuctionsResponse {

@@ -3,6 +3,12 @@ Auction house simulator written in Rust
 
 ## Design
 
+Purpose of this project is to learn Rust and to create a simple auction house simulator.
+The design decisions and used technologies were not made to fit for real-life  application,
+but rather for learning Rust and other stuff.
+
+### Services
+
 ```mermaid
 flowchart LR
     CLI --> Backend
@@ -12,18 +18,72 @@ flowchart LR
     Backend --> Session
 ```
 
-CLI is a client that communicates with the backend.
+- **CLI**: 
+  - communicates with the backend via gRPC to perform actions on the auction house,
+  - communicates with the session via gRPC to perform actions on the user's session.
+- **Backend**:
+  - handles the business logic of the application,
+  - receives requests from the CLI and communicates with the database to perform actions on the auction house,
+  - communicates with the session to authenticate the user.
+- **Session**:
+  - handles the user's session,
+  - receives requests from the CLI and returns the user's token,
+  - verifies the user's token and returns the user's id to the backend.
+- **Database**:
+  - stores the auction house's state,
+  - stores the user's credentials.
 
-The backend communicates with the database. The backend's responsibility is to handle the business logic of the application.
-The database is responsible for processing the auctions, funds and items deposited by the users.
+### Database
 
-The session is responsible for handling the user's session and authentication.
-Generates a token that is used by the backend to authenticate the user.
-The backend validates the token and uses the user's id to perform actions on the user's resources (e.g. funds, items, auctions).
+MongoDB is used as the database.
 
-The database keeps track of the auctions, funds and items deposited by the users. It also stores the user's credentials.
+Database collections:
+  - Auctions
+  - Funds
+  - Items
+  - Users
 
-## Available CLI commands
+**Auctions**:
+```json
+{
+  "id": "auction_id",
+  "item": "item_id",
+  "starting_price": 100,
+  "current_price": 100,
+  "duration": 60,
+  "start_time": "2021-01-01T00:00:00Z",
+  "end_time": "2021-01-01T00:01:00Z",
+  "bidder": "user_id",
+  "owner": "user_id"
+}
+```
+
+**Funds**:
+```json
+{
+  "id": "user_id",
+  "balance": 100
+}
+```
+
+**Items**:
+```json
+{
+  "id": "item_id",
+  "owner": "user_id"
+}
+```
+
+**Users**:
+```json
+{
+  "id": "user_id",
+  "username": "username",
+  "password": "password"
+}
+```
+
+### Available CLI commands
 
 **TODO** - not implemented yet
 
