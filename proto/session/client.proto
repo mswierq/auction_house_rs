@@ -1,18 +1,18 @@
 syntax = "proto3";
-
-import "google/protobuf/empty.proto";
 package auction_house_rs.session.client;
 
+import "google/protobuf/empty.proto";
+
 service ClientSession {
-    rpc Register(Register) returns (TokenResponse);
-    rpc Login(Login) returns (TokenResponse);
+    rpc Register(RegisterRequest) returns (TokenResponse);
+    rpc Login(LoginRequest) returns (TokenResponse);
     rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc DeleteAccount(google.protobuf.Empty) returns (google.protobuf.Empty);
-    rpc ChangePassword(ChangePassword) returns (google.protobuf.Empty);
+    rpc ChangePassword(ChangePasswordRequest) returns (TokenResponse);
     rpc RefreshToken(google.protobuf.Empty) returns (TokenResponse);
 }
 
-message Register {
+message RegisterRequest {
     string username = 1;
     string password = 2;
 }
@@ -21,7 +21,7 @@ message TokenResponse {
     string token = 1;
 }
 
-message Login {
+message LoginRequest {
     string username = 1;
     string password = 2;
 }
@@ -30,7 +30,7 @@ message LoginResponse {
     string token = 1;
 }
 
-message ChangePassword {
+message ChangePasswordRequest {
     string old_password = 1;
     string new_password = 2;
 }
