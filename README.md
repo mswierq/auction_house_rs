@@ -96,8 +96,8 @@ Some commands do not require a token, which is specified in the command's descri
     - `auction_house_cli user login <username> <password>` - Login as a user and get a token, **token is ignored**
     - `auction_house_cli user logout` - Logout and invalidate the current token
     - `auction_house_cli user delete <username> <password>` - Delete the current user
-    - `auction_house_cli user change_password <old_password> <new_password>` - Change the current user's password
-    - `auction_house_cli user refresh_token` - Refresh the current user's token
+    - `auction_house_cli user change-password <old_password> <new_password>` - Change the current user's password
+    - `auction_house_cli user refresh-token` - Refresh the current user's token
   - `auction_house_cli funds` - manage funds
     - `auction_house_cli funds deposit <amount>` - Deposit funds into the auction house
     - `auction_house_cli funds withdraw <amount>` - Withdraw funds from the auction house
