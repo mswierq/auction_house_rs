@@ -1,6 +1,6 @@
 use clap::Parser;
 use client_session_proto::client_session_client::ClientSessionClient;
-use client_session_proto::{ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse};
+use client_session_proto::{ChangePasswordRequest, LoginRequest, RegisterRequest};
 use std::env;
 
 pub mod client_session_proto {
