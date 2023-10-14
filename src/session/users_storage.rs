@@ -36,6 +36,24 @@ impl UsersStorage {
         }
     }
 
+    pub fn update_user(
+        &mut self,
+        user: &str,
+        password: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(_) = self.users.get(user) {
+            let hash = Argon2::default().hash_password(password.as_bytes(), &self.salt);
+            if hash.is_err() {
+                return Err("Failed to hash password".into());
+            }
+            self.users
+                .insert(user.to_owned(), hash.unwrap().to_string());
+            Ok(())
+        } else {
+            Err("User does not exist".into())
+        }
+    }
+
     pub fn verify_user(
         &self,
         user: &str,
@@ -71,6 +89,18 @@ mod test {
         let password = "password";
         users.add_user(user, password).unwrap();
         assert!(users.verify_user(user, password).is_ok());
+    }
+
+    #[test]
+    fn update_user_and_verify_its_password() {
+        let mut users = UsersStorage::new();
+        let user = "user";
+        let password = "password";
+        users.add_user(user, password).unwrap();
+        assert!(users.verify_user(user, password).is_ok());
+        let new_password = "new password";
+        users.update_user(user, new_password).unwrap();
+        assert!(users.verify_user(user, new_password).is_ok());
     }
 
     #[test]
