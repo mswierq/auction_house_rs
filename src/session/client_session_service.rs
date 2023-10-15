@@ -37,6 +37,34 @@ impl ClientSessionImpl {
             ))
         }
     }
+
+    // TODO turn this into a macro
+    fn exec_authorized<TReq, TRsp, F>(
+        &self,
+        request: Request<TReq>,
+        callback: F,
+    ) -> Result<Response<TRsp>, Status>
+    where
+        F: Fn(Request<TReq>, &str, &str) -> Result<Response<TRsp>, Status>,
+    {
+        let auth_metadata = request.metadata().get(AUTH_HEADER);
+        if let None = auth_metadata {
+            return Err(Status::new(
+                tonic::Code::Internal,
+                "Failed to get token".to_string(),
+            ));
+        }
+        let token = auth_metadata.unwrap().to_owned();
+        let result = self.tokens.verify_token(&token.to_str().unwrap()[7..]); // skip "Bearer "
+        if let Ok(user) = result {
+            callback(request, &user, &token.to_str().unwrap())
+        } else {
+            Err(Status::new(
+                tonic::Code::PermissionDenied,
+                "Invalid token".to_string(),
+            ))
+        }
+    }
 }
 
 #[tonic::async_trait]
@@ -63,7 +91,10 @@ impl ClientSession for ClientSessionImpl {
         {
             let users = self.users.lock().unwrap();
             if let Err(status) = users.verify_user(&data.username, &data.password) {
-                return Err(Status::new(tonic::Code::PermissionDenied, status.to_string()));
+                return Err(Status::new(
+                    tonic::Code::PermissionDenied,
+                    status.to_string(),
+                ));
             }
         }
         self.get_token_response(&data.username)
@@ -75,57 +106,32 @@ impl ClientSession for ClientSessionImpl {
     }
 
     async fn delete_account(&self, request: Request<()>) -> Result<Response<()>, Status> {
-        // TODO implement an authentication macro
-        if let Some(token) = request.metadata().get(AUTH_HEADER) {
-            let result = self.tokens.verify_token(&token.to_str().unwrap()[7..]); // skip "Bearer "
-            if let Ok(user) = result {
-                let mut users = self.users.lock().unwrap();
-                users.remove_user(&user);
-                Ok(Response::new(()))
-            } else {
-                Err(Status::new(
-                    tonic::Code::PermissionDenied,
-                    "Invalid token".to_string(),
-                ))
-            }
-        } else {
-            Err(Status::new(
-                tonic::Code::Internal,
-                "Failed to get token".to_string(),
-            ))
-        }
+        self.exec_authorized(request, |_, user, _| {
+            let mut users = self.users.lock().unwrap();
+            users.remove_user(&user);
+            Ok(Response::new(()))
+        })
     }
 
     async fn change_password(
         &self,
         request: Request<ChangePasswordRequest>,
     ) -> Result<Response<TokenResponse>, Status> {
-        // TODO implement an authentication macro
-        if let Some(token) = request.metadata().get(AUTH_HEADER) {
-            let result = self.tokens.verify_token(&token.to_str().unwrap()[7..]); // skip "Bearer "
-            if let Ok(user) = result {
-                let data = request.into_inner();
-                let mut users = self.users.lock().unwrap();
-                if let Err(status) = users.verify_user(&user, &data.old_password) {
-                    return Err(Status::new(tonic::Code::PermissionDenied, status.to_string()));
-                }
-                if let Err(status) = users.update_user(&user, &data.new_password) {
-                    return Err(Status::new(tonic::Code::Internal, status.to_string()));
-                }
-                // TODO: invalidate the old token!
-                self.get_token_response(&user) // generate new token
-            } else {
-                Err(Status::new(
+        self.exec_authorized(request, |request, user, _| {
+            let data = request.into_inner();
+            let mut users = self.users.lock().unwrap();
+            if let Err(status) = users.verify_user(&user, &data.old_password) {
+                return Err(Status::new(
                     tonic::Code::PermissionDenied,
-                    "Invalid token".to_string(),
-                ))
+                    status.to_string(),
+                ));
             }
-        } else {
-            Err(Status::new(
-                tonic::Code::Internal,
-                "Failed to get token".to_string(),
-            ))
-        }
+            if let Err(status) = users.update_user(&user, &data.new_password) {
+                return Err(Status::new(tonic::Code::Internal, status.to_string()));
+            }
+            // TODO: invalidate the old token!
+            self.get_token_response(&user) // generate new token
+        })
     }
 
     async fn refresh_token(&self, request: Request<()>) -> Result<Response<TokenResponse>, Status> {
@@ -149,7 +155,10 @@ mod test {
             password: "password".into(),
         });
         let response = service.register(request).await.unwrap();
-        assert!(service.tokens.verify_token(&response.into_inner().token).is_ok());
+        assert!(service
+            .tokens
+            .verify_token(&response.into_inner().token)
+            .is_ok());
     }
 
     #[tokio::test]
@@ -180,7 +189,10 @@ mod test {
             password: "password".into(),
         });
         let response = service.login(request).await.unwrap();
-        assert!(service.tokens.verify_token(&response.into_inner().token).is_ok());
+        assert!(service
+            .tokens
+            .verify_token(&response.into_inner().token)
+            .is_ok());
     }
 
     #[tokio::test]
@@ -197,7 +209,12 @@ mod test {
         });
         let token_resp = service.login(request).await.unwrap();
         let mut request = tonic::Request::new(());
-        request.metadata_mut().append(AUTH_HEADER, format!("Bearer {}", token_resp.into_inner().token).parse().unwrap());
+        request.metadata_mut().append(
+            AUTH_HEADER,
+            format!("Bearer {}", token_resp.into_inner().token)
+                .parse()
+                .unwrap(),
+        );
         let _ = service.delete_account(request).await.unwrap();
         let request = tonic::Request::new(LoginRequest {
             username: "user".into(),
@@ -215,7 +232,9 @@ mod test {
         });
         let _ = service.register(request).await.unwrap();
         let mut request = tonic::Request::new(());
-        request.metadata_mut().append(AUTH_HEADER, "Bearer invalid token".parse().unwrap());
+        request
+            .metadata_mut()
+            .append(AUTH_HEADER, "Bearer invalid token".parse().unwrap());
         assert!(service.delete_account(request).await.is_err());
     }
 
@@ -236,7 +255,12 @@ mod test {
             old_password: "password".into(),
             new_password: "new password".into(),
         });
-        request.metadata_mut().append(AUTH_HEADER, format!("Bearer {}", token_resp.into_inner().token).parse().unwrap());
+        request.metadata_mut().append(
+            AUTH_HEADER,
+            format!("Bearer {}", token_resp.into_inner().token)
+                .parse()
+                .unwrap(),
+        );
         let _ = service.change_password(request).await.unwrap();
         let request = tonic::Request::new(LoginRequest {
             username: "user".into(),
@@ -257,7 +281,9 @@ mod test {
             old_password: "password".into(),
             new_password: "new password".into(),
         });
-        request.metadata_mut().append(AUTH_HEADER, "Bearer invalid token".parse().unwrap());
+        request
+            .metadata_mut()
+            .append(AUTH_HEADER, "Bearer invalid token".parse().unwrap());
         assert!(service.change_password(request).await.is_err());
     }
 
@@ -278,7 +304,12 @@ mod test {
             old_password: "password".into(),
             new_password: "new password".into(),
         });
-        request.metadata_mut().append(AUTH_HEADER, format!("Bearer {}", token_resp.into_inner().token).parse().unwrap());
+        request.metadata_mut().append(
+            AUTH_HEADER,
+            format!("Bearer {}", token_resp.into_inner().token)
+                .parse()
+                .unwrap(),
+        );
         let _ = service.change_password(request).await.unwrap();
         let request = tonic::Request::new(LoginRequest {
             username: "user".into(),
