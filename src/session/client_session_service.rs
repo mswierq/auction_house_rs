@@ -1,28 +1,30 @@
-use crate::token_engine::Engine;
+use crate::token_engine::TokenBroker;
 use crate::users_storage::UsersStorage;
-use client_session_proto::client_session_server::{ClientSession, ClientSessionServer};
-use client_session_proto::{ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse};
+use client_proto::client_session_server::{ClientSession, ClientSessionServer};
+use client_proto::{ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse};
 use std::sync::{Arc, Mutex};
 use tonic::{Request, Response, Status};
-pub mod client_session_proto {
+pub mod client_proto {
     tonic::include_proto!("auction_house_rs.session.client");
 }
 
-pub fn create_client_session_service() -> ClientSessionServer<ClientSessionImpl> {
-    ClientSessionServer::new(ClientSessionImpl::new())
+pub fn create_client_session_service(
+    tokens: Arc<TokenBroker>,
+) -> ClientSessionServer<ClientSessionService> {
+    ClientSessionServer::new(ClientSessionService::new(tokens))
 }
 
-pub struct ClientSessionImpl {
-    tokens: Engine,
+pub struct ClientSessionService {
+    tokens: Arc<TokenBroker>,
     users: Arc<Mutex<UsersStorage>>,
 }
 
 const AUTH_HEADER: &str = "authorization";
 
-impl ClientSessionImpl {
-    fn new() -> Self {
+impl ClientSessionService {
+    fn new(tokens: Arc<TokenBroker>) -> Self {
         Self {
-            tokens: Engine::new(),
+            tokens,
             users: Arc::new(Mutex::new(UsersStorage::new())),
         }
     }
@@ -68,7 +70,7 @@ impl ClientSessionImpl {
 }
 
 #[tonic::async_trait]
-impl ClientSession for ClientSessionImpl {
+impl ClientSession for ClientSessionService {
     async fn register(
         &self,
         request: Request<RegisterRequest>,
@@ -100,7 +102,7 @@ impl ClientSession for ClientSessionImpl {
         self.get_token_response(&data.username)
     }
 
-    async fn logout(&self, request: Request<()>) -> Result<Response<()>, Status> {
+    async fn logout(&self, _request: Request<()>) -> Result<Response<()>, Status> {
         // TODO: put a token into a blacklist
         Ok(Response::new(()))
     }
@@ -135,7 +137,7 @@ impl ClientSession for ClientSessionImpl {
     }
 
     async fn refresh_token(&self, request: Request<()>) -> Result<Response<TokenResponse>, Status> {
-        self.exec_authorized(request, |request, user, _token| {
+        self.exec_authorized(request, |_request, user, _token| {
             // TODO: invalidate the old token!
             self.get_token_response(&user)
         })
@@ -145,24 +147,23 @@ impl ClientSession for ClientSessionImpl {
 #[cfg(test)]
 mod test {
     use super::*;
-    use client_session_proto::client_session_server::ClientSession;
+
     #[tokio::test]
     async fn test_register() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
         });
         let response = service.register(request).await.unwrap();
-        assert!(service
-            .tokens
-            .verify_token(&response.into_inner().token)
-            .is_ok());
+        assert!(tokens.verify_token(&response.into_inner().token).is_ok());
     }
 
     #[tokio::test]
     async fn test_try_register_twice() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -177,7 +178,8 @@ mod test {
 
     #[tokio::test]
     async fn test_login() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -188,15 +190,13 @@ mod test {
             password: "password".into(),
         });
         let response = service.login(request).await.unwrap();
-        assert!(service
-            .tokens
-            .verify_token(&response.into_inner().token)
-            .is_ok());
+        assert!(tokens.verify_token(&response.into_inner().token).is_ok());
     }
 
     #[tokio::test]
     async fn test_remove_user() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -224,7 +224,8 @@ mod test {
 
     #[tokio::test]
     async fn test_try_remove_user_without_login() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -239,7 +240,8 @@ mod test {
 
     #[tokio::test]
     async fn test_change_password() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -266,15 +268,13 @@ mod test {
             password: "new password".into(),
         });
         let response = service.login(request).await.unwrap();
-        assert!(service
-            .tokens
-            .verify_token(&response.into_inner().token)
-            .is_ok());
+        assert!(tokens.verify_token(&response.into_inner().token).is_ok());
     }
 
     #[tokio::test]
     async fn test_try_change_password_without_login() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -292,7 +292,8 @@ mod test {
 
     #[tokio::test]
     async fn test_login_after_changing_password() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -323,7 +324,8 @@ mod test {
 
     #[tokio::test]
     async fn test_refresh_token_after_login() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let request = tonic::Request::new(RegisterRequest {
             username: "user".into(),
             password: "password".into(),
@@ -342,15 +344,15 @@ mod test {
                 .unwrap(),
         );
         let new_token_resp = service.refresh_token(request).await.unwrap();
-        assert!(service
-            .tokens
+        assert!(tokens
             .verify_token(&new_token_resp.into_inner().token)
             .is_ok());
     }
 
     #[tokio::test]
     async fn test_try_refresh_token_without_login() {
-        let service = ClientSessionImpl::new();
+        let tokens = Arc::new(TokenBroker::new());
+        let service = ClientSessionService::new(tokens.clone());
         let mut request = tonic::Request::new(());
         request
             .metadata_mut()
