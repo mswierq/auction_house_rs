@@ -1,27 +1,27 @@
 syntax = "proto3";
-
-import "google/protobuf/empty.proto";
 package auction_house_rs.backend.client;
 
+import "google/protobuf/empty.proto";
+
 service Client {
-    rpc DepositFunds(DepositFunds) returns (google.protobuf.Empty);
-    rpc WithdrawFunds(WithdrawFunds) returns (google.protobuf.Empty);
+    rpc DepositFunds(DepositFundsRequest) returns (google.protobuf.Empty);
+    rpc WithdrawFunds(WithdrawFundsRequest) returns (google.protobuf.Empty);
     rpc ShowFunds(google.protobuf.Empty) returns (ShowFundsResponse);
-    rpc DepositItem(DepositItem) returns (google.protobuf.Empty);
-    rpc WithdrawItem(WithdrawItem) returns (google.protobuf.Empty);
+    rpc DepositItem(DepositItemRequest) returns (google.protobuf.Empty);
+    rpc WithdrawItem(WithdrawItemRequest) returns (google.protobuf.Empty);
     rpc ShowItems(google.protobuf.Empty) returns (ShowItemsResponse);
-    rpc SellItem(SellItem) returns (google.protobuf.Empty);
-    rpc BidItem(BidItem) returns (google.protobuf.Empty);
+    rpc SellItem(SellItemRequest) returns (google.protobuf.Empty);
+    rpc BidItem(BidItemRequest) returns (google.protobuf.Empty);
     rpc ListAuctions(google.protobuf.Empty) returns (ListAuctionsResponse);
-    rpc ListWatchAuctions(ListAuctions) returns (stream ListAuctionsResponse);
+    rpc ListWatchAuctions(stream google.protobuf.Empty) returns (stream ListAuctionsResponse);
     rpc WatchUserAuctions(stream google.protobuf.Empty) returns (stream WatchUserAuctionsResponse);
 }
 
-message DepositFunds {
+message DepositFundsRequest {
     uint64 amount = 1;
 }
 
-message WithdrawFunds {
+message WithdrawFundsRequest {
     uint64 amount = 1;
 }
 
@@ -29,11 +29,11 @@ message ShowFundsResponse {
     uint64 funds = 1;
 }
 
-message DepositItem {
+message DepositItemRequest {
     string item = 1;
 }
 
-message WithdrawItem {
+message WithdrawItemRequest {
     string item = 1;
 }
 
@@ -41,13 +41,13 @@ message ShowItemsResponse {
     repeated string items = 1;
 }
 
-message SellItem {
+message SellItemRequest {
     string item = 1;
     uint64 price = 2;
     uint64 duration = 3;
 }
 
-message BidItem {
+message BidItemRequest {
     string auction_id = 1;
     uint64 price = 2;
 }
