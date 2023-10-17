@@ -135,11 +135,10 @@ impl ClientSession for ClientSessionImpl {
     }
 
     async fn refresh_token(&self, request: Request<()>) -> Result<Response<TokenResponse>, Status> {
-        let reply = TokenResponse {
-            token: "dummy token".into(),
-        };
-
-        Ok(Response::new(reply))
+        self.exec_authorized(request, |request, user, _token| {
+            // TODO: invalidate the old token!
+            self.get_token_response(&user)
+        })
     }
 }
 
@@ -266,7 +265,11 @@ mod test {
             username: "user".into(),
             password: "new password".into(),
         });
-        assert!(service.login(request).await.is_ok());
+        let response = service.login(request).await.unwrap();
+        assert!(service
+            .tokens
+            .verify_token(&response.into_inner().token)
+            .is_ok());
     }
 
     #[tokio::test]
@@ -316,5 +319,42 @@ mod test {
             password: "new password".into(),
         });
         assert!(service.login(request).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_refresh_token_after_login() {
+        let service = ClientSessionImpl::new();
+        let request = tonic::Request::new(RegisterRequest {
+            username: "user".into(),
+            password: "password".into(),
+        });
+        let _ = service.register(request).await.unwrap();
+        let request = tonic::Request::new(LoginRequest {
+            username: "user".into(),
+            password: "password".into(),
+        });
+        let token_resp = service.login(request).await.unwrap();
+        let mut request = tonic::Request::new(());
+        request.metadata_mut().append(
+            AUTH_HEADER,
+            format!("Bearer {}", token_resp.into_inner().token)
+                .parse()
+                .unwrap(),
+        );
+        let new_token_resp = service.refresh_token(request).await.unwrap();
+        assert!(service
+            .tokens
+            .verify_token(&new_token_resp.into_inner().token)
+            .is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_try_refresh_token_without_login() {
+        let service = ClientSessionImpl::new();
+        let mut request = tonic::Request::new(());
+        request
+            .metadata_mut()
+            .append(AUTH_HEADER, "Bearer invalid token".parse().unwrap());
+        assert!(service.refresh_token(request).await.is_err());
     }
 }
