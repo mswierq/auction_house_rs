@@ -1,9 +1,9 @@
 syntax = "proto3";
-package auction_house_rs.backend.client;
+package auction_house_rs.backend;
 
 import "google/protobuf/empty.proto";
 
-service Client {
+service Backend {
     rpc DepositFunds(DepositFundsRequest) returns (google.protobuf.Empty);
     rpc WithdrawFunds(WithdrawFundsRequest) returns (google.protobuf.Empty);
     rpc ShowFunds(google.protobuf.Empty) returns (ShowFundsResponse);
@@ -13,8 +13,8 @@ service Client {
     rpc SellItem(SellItemRequest) returns (google.protobuf.Empty);
     rpc BidItem(BidItemRequest) returns (google.protobuf.Empty);
     rpc ListAuctions(google.protobuf.Empty) returns (ListAuctionsResponse);
-    rpc ListWatchAuctions(stream google.protobuf.Empty) returns (stream ListAuctionsResponse);
-    rpc WatchUserAuctions(stream google.protobuf.Empty) returns (stream WatchUserAuctionsResponse);
+    rpc WatchAuctions(google.protobuf.Empty) returns (stream ListAuctionsResponse);
+    rpc WatchUserAuctions(google.protobuf.Empty) returns (stream WatchUserAuctionsResponse);
 }
 
 message DepositFundsRequest {
