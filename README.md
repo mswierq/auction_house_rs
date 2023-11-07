@@ -37,49 +37,60 @@ flowchart LR
 
 MongoDB is used as the database.
 
-Database collections:
-  - Auctions
-  - Funds
-  - Items
-  - Users
+#### Databases
+  - AuctionHouse
+  - Session
 
-**Auctions**:
+##### AuctionHouse database collections:
+  - Users
+  - Auctions
+
+##### Session database collections:
+  - Credentials
+
+#### Example Documents
+
+##### Credentials collection
+
 ```json
 {
-  "id": "auction_id",
-  "item": "item_id",
+  "_id": 123,
+  "username": "username",
+  "password": "password"
+}
+```
+
+##### Users collection
+
+```json
+{
+  "_id": 123,
+  "username": "username",
+  "balance": 1000,
+  "items": [123, ...]
+}
+```
+
+```json
+{
+  "_id": 123,
+  "name": "some item"
+}
+```
+
+##### Auctions collection
+
+```json
+{
+  "_id": 7123,
+  "item": "some item",
   "starting_price": 100,
   "current_price": 100,
   "duration": 60,
   "start_time": "2021-01-01T00:00:00Z",
   "end_time": "2021-01-01T00:01:00Z",
-  "bidder": "user_id",
-  "owner": "user_id"
-}
-```
-
-**Funds**:
-```json
-{
-  "id": "user_id",
-  "balance": 100
-}
-```
-
-**Items**:
-```json
-{
-  "id": "item_id",
-  "owner": "user_id"
-}
-```
-
-**Users**:
-```json
-{
-  "id": "user_id",
-  "username": "username",
-  "password": "password"
+  "bidder": "other_username",
+  "owner_id": "username"
 }
 ```
 
