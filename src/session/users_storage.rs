@@ -7,14 +7,12 @@ use std::collections::HashMap;
 //TODO: Store it in database
 pub struct UsersStorage {
     users: HashMap<String, String>,
-    salt: SaltString,
 }
 
 impl UsersStorage {
     pub fn new() -> Self {
         Self {
             users: HashMap::new(),
-            salt: SaltString::generate(&mut OsRng),
         }
     }
 
@@ -24,7 +22,8 @@ impl UsersStorage {
         password: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if let None = self.users.get(user) {
-            let hash = Argon2::default().hash_password(password.as_bytes(), &self.salt);
+            let salt = SaltString::generate(&mut OsRng);
+            let hash = Argon2::default().hash_password(password.as_bytes(), &salt);
             if hash.is_err() {
                 return Err("Failed to hash password".into());
             }
@@ -42,7 +41,8 @@ impl UsersStorage {
         password: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(_) = self.users.get(user) {
-            let hash = Argon2::default().hash_password(password.as_bytes(), &self.salt);
+            let salt = SaltString::generate(&mut OsRng);
+            let hash = Argon2::default().hash_password(password.as_bytes(), &salt);
             if hash.is_err() {
                 return Err("Failed to hash password".into());
             }

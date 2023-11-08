@@ -1,5 +1,5 @@
-use backend_service::BackendService;
 use backend_service::backend_proto::backend_server::BackendServer;
+use backend_service::BackendService;
 use tonic::transport::Server;
 mod backend_service;
 
