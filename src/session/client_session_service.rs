@@ -1,5 +1,5 @@
 use crate::token_engine::TokenBroker;
-use crate::users_storage::UsersStorage;
+use crate::user_credentials::{memory_storage::MemoryStorage, UserCredentials};
 use client_proto::client_session_server::{ClientSession, ClientSessionServer};
 use client_proto::{ChangePasswordRequest, LoginRequest, RegisterRequest, TokenResponse};
 use std::sync::{Arc, Mutex};
@@ -16,7 +16,7 @@ pub fn create_client_session_service(
 
 pub struct ClientSessionService {
     tokens: Arc<TokenBroker>,
-    users: Arc<Mutex<UsersStorage>>,
+    credentials: Arc<Mutex<dyn UserCredentials + Send>>,
 }
 
 const AUTH_HEADER: &str = "authorization";
@@ -25,7 +25,7 @@ impl ClientSessionService {
     fn new(tokens: Arc<TokenBroker>) -> Self {
         Self {
             tokens,
-            users: Arc::new(Mutex::new(UsersStorage::new())),
+            credentials: Arc::new(Mutex::new(MemoryStorage::default())),
         }
     }
 
@@ -77,7 +77,7 @@ impl ClientSession for ClientSessionService {
     ) -> Result<Response<TokenResponse>, Status> {
         let data = request.into_inner();
         {
-            let mut users = self.users.lock().unwrap();
+            let mut users = self.credentials.lock().unwrap();
             if let Err(status) = users.add_user(&data.username, &data.password) {
                 return Err(Status::new(tonic::Code::AlreadyExists, status.to_string()));
             }
@@ -91,7 +91,7 @@ impl ClientSession for ClientSessionService {
     ) -> Result<Response<TokenResponse>, Status> {
         let data = request.into_inner();
         {
-            let users = self.users.lock().unwrap();
+            let users = self.credentials.lock().unwrap();
             if let Err(status) = users.verify_user(&data.username, &data.password) {
                 return Err(Status::new(
                     tonic::Code::PermissionDenied,
@@ -109,7 +109,7 @@ impl ClientSession for ClientSessionService {
 
     async fn delete_account(&self, request: Request<()>) -> Result<Response<()>, Status> {
         self.exec_authorized(request, |_, user, _| {
-            let mut users = self.users.lock().unwrap();
+            let mut users = self.credentials.lock().unwrap();
             users.remove_user(&user);
             Ok(Response::new(()))
         })
@@ -121,7 +121,7 @@ impl ClientSession for ClientSessionService {
     ) -> Result<Response<TokenResponse>, Status> {
         self.exec_authorized(request, |request, user, _| {
             let data = request.into_inner();
-            let mut users = self.users.lock().unwrap();
+            let mut users = self.credentials.lock().unwrap();
             if let Err(status) = users.verify_user(&user, &data.old_password) {
                 return Err(Status::new(
                     tonic::Code::PermissionDenied,

@@ -6,7 +6,7 @@ use tonic::transport::Server;
 mod client_session_service;
 mod token_engine;
 mod token_verifier_service;
-mod users_storage;
+mod user_credentials;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
