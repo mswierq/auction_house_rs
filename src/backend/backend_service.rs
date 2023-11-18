@@ -20,7 +20,6 @@ use crate::backend::{
 
 type ResponseStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send>>;
 
-
 pub struct BackendService {
     users: Arc<Mutex<dyn UsersBackend + Send>>,
     auctions: Arc<Mutex<dyn AuctionsBackend + Send>>,
