@@ -86,7 +86,6 @@ MongoDB is used as the database.
   "item": "some item",
   "starting_price": 100,
   "current_price": 100,
-  "duration": 60,
   "start_time": "2021-01-01T00:00:00Z",
   "end_time": "2021-01-01T00:01:00Z",
   "bidder": "other_username",

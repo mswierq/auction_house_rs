@@ -5,16 +5,35 @@ use backend_proto::{
     WithdrawItemRequest,
 };
 use std::pin::Pin;
+use std::sync::Arc;
+use std::sync::Mutex;
 use tokio_stream::Stream;
 use tonic::{Request, Response, Status};
 pub mod backend_proto {
     tonic::include_proto!("auction_house_rs.backend");
 }
 
+use crate::backend::{
+    auctions_memory_storage::AuctionsMemoryStorage, users_memory_storage::UsersMemoryStorage,
+    AuctionsBackend, UsersBackend,
+};
+
 type ResponseStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send>>;
 
-#[derive(Default)]
-pub struct BackendService {}
+
+pub struct BackendService {
+    users: Arc<Mutex<dyn UsersBackend + Send>>,
+    auctions: Arc<Mutex<dyn AuctionsBackend + Send>>,
+}
+
+impl Default for BackendService {
+    fn default() -> Self {
+        Self {
+            users: Arc::new(Mutex::new(UsersMemoryStorage::default())),
+            auctions: Arc::new(Mutex::new(AuctionsMemoryStorage::default())),
+        }
+    }
+}
 
 #[tonic::async_trait]
 impl Backend for BackendService {
