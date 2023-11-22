@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 pub mod auctions_memory_storage;
 pub mod users_memory_storage;
 
@@ -75,6 +76,7 @@ pub trait UsersBackend {
 }
 
 /// A struct representing an auction.
+#[derive(Clone, PartialEq, Debug)]
 pub struct Auction {
     item: String,
     starting_price: Funds,
@@ -85,17 +87,36 @@ pub struct Auction {
     buyer: Option<String>,
 }
 
-type AuctionId = u32;
+impl Auction {
+    fn new(item: &str, starting_price: Funds, duration: std::time::Duration, seller: &str) -> Self {
+        let start_time = std::time::SystemTime::now();
+        let end_time = start_time + duration;
+        Self {
+            item: item.to_owned(),
+            starting_price,
+            current_price: 0,
+            start_time,
+            end_time,
+            seller: seller.to_owned(),
+            buyer: None,
+        }
+    }
+}
 
 /// Trait for auctions data storage.
 pub trait AuctionsBackend {
+    type AuctionId;
+
     /// Adds a new auction.
     ///
     /// # Arguments
     /// * `auction` - The auction to add.
     /// # Returns
     /// Should return an auction id or an error if adding the auction failed.
-    fn add_auction(&mut self, auction: Auction) -> Result<AuctionId, Box<dyn std::error::Error>>;
+    fn add_auction(
+        &mut self,
+        auction: Auction,
+    ) -> Result<Self::AuctionId, Box<dyn std::error::Error>>;
 
     /// Bids on an auction.
     ///
@@ -107,33 +128,33 @@ pub trait AuctionsBackend {
     /// Should return an error if the auction does not exist, the auction is concluded, the bidder does not exist, the bidder is the seller, the bidder is the current highest bidder, or the bid amount is lower than the current price.
     fn bid_auction(
         &mut self,
-        auction_id: AuctionId,
+        auction_id: Self::AuctionId,
         bidder: &str,
         amount: Funds,
     ) -> Result<(), Box<dyn std::error::Error>>;
 
-    /// Close an auction.
+    /// Close an auction and return the auction's information.
     ///
     /// # Arguments
     /// * `auction_id` - The auction's id.
     /// # Returns
-    /// Should return an error if the auction does not exist or the auction is already concluded.
-    fn close_auction(&mut self, auction_id: AuctionId) -> Result<(), Box<dyn std::error::Error>>;
+    /// Should return an auction or an error if the auction does not exist or the auction is already concluded.
+    fn close_auction(
+        &mut self,
+        auction_id: Self::AuctionId,
+    ) -> Result<Auction, Box<dyn std::error::Error>>;
 
     /// Lists all ongoing auctions.
     /// # Returns
     /// Should return a vector of all ongoing auctions with their ids or an error if listing the auctions failed.
     fn list_ongoing_auctions(
         &self,
-    ) -> Result<Vec<(AuctionId, Auction)>, Box<dyn std::error::Error>>;
+    ) -> Result<HashMap<Self::AuctionId, Auction>, Box<dyn std::error::Error>>;
 
-    /// Watches user's ongoing and concluded auctions.
-    /// # Arguments
-    /// * `user` - The user's name.
+    /// Removes all concluded auctions from the storage and returns them.
     /// # Returns
-    /// Should return a vector of the user's ongoing and concluded auctions with their ids or an error if listing the auctions failed.
-    fn watch_auctions(
-        &self,
-        user: &str,
-    ) -> Result<Vec<(AuctionId, Auction)>, Box<dyn std::error::Error>>;
+    /// Should return a vector of all concluded auctions with their ids or an error if listing the auctions failed.
+    fn pop_concluded_auctions(
+        &mut self,
+    ) -> Result<HashMap<Self::AuctionId, Auction>, Box<dyn std::error::Error>>;
 }

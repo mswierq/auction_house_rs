@@ -20,22 +20,36 @@ use crate::backend::{
 
 type ResponseStream<T> = Pin<Box<dyn Stream<Item = Result<T, Status>> + Send>>;
 
-pub struct BackendService {
-    users: Arc<Mutex<dyn UsersBackend + Send>>,
-    auctions: Arc<Mutex<dyn AuctionsBackend + Send>>,
+pub struct BackendService<UBT, ABT>
+where
+    UBT: UsersBackend + Send + 'static,
+    ABT: AuctionsBackend + Send + 'static,
+{
+    users: Arc<Mutex<UBT>>,
+    auctions: Arc<Mutex<ABT>>,
 }
 
-impl Default for BackendService {
+impl<UBT, ABT> Default for BackendService<UBT, ABT>
+where
+    UBT: UsersBackend + Default + Send + 'static,
+    ABT: AuctionsBackend + Default + Send + 'static,
+{
     fn default() -> Self {
         Self {
-            users: Arc::new(Mutex::new(UsersMemoryStorage::default())),
-            auctions: Arc::new(Mutex::new(AuctionsMemoryStorage::default())),
+            users: Arc::new(Mutex::new(UBT::default())),
+            auctions: Arc::new(Mutex::new(ABT::default())),
         }
     }
 }
 
+pub type DefaultBackendService = BackendService<UsersMemoryStorage, AuctionsMemoryStorage>;
+
 #[tonic::async_trait]
-impl Backend for BackendService {
+impl<UBT, ABT> Backend for BackendService<UBT, ABT>
+where
+    UBT: UsersBackend + Send + 'static,
+    ABT: AuctionsBackend + Send + 'static,
+{
     async fn deposit_funds(
         &self,
         request: Request<DepositFundsRequest>,
